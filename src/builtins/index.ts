@@ -191,6 +191,7 @@ export function registerBuiltins(context: VbContext): void {
   });
 
   context.functionRegistry.register('TypeName', (expression: VbValue): VbValue => {
+    if (expression.type === 'Object' && expression.value === null) return { type: 'String', value: 'Nothing' };
     if (expression.type === 'Object' && expression.value && typeof expression.value === 'object') {
       const obj = expression.value as { classInfo?: { name: string } };
       if (obj.classInfo && obj.classInfo.name) {

@@ -1097,3 +1097,26 @@ describe('Error surfaces (ScriptControl member vs thrown host Error)', () => {
     expect(engine.error!.source).toBe('Microsoft VBScript runtime error');
   });
 });
+
+// ---------------------------------------------------------------------------
+// TypeName of Nothing
+// ---------------------------------------------------------------------------
+// vbscript.dll names an object reference that holds nothing "Nothing", not "Object";
+// VarType stays 9 either way.
+describe('TypeName of Nothing', () => {
+  it.each<[string, string]>([
+    ['a variable set to Nothing', 'Set x = Nothing\nr = TypeName(x)'],
+    ['the literal', 'r = TypeName(Nothing)'],
+  ])('names %s "Nothing"', (_label, code) => {
+    const engine = new VbsEngine();
+    engine.executeStatement(code);
+    expect(engine.error).toBeNull();
+    expect(engine.eval('r')).toBe('Nothing');
+  });
+
+  it('GUARD still names a live object by its class', () => {
+    const engine = new VbsEngine();
+    engine.executeStatement('Class C\nEnd Class\nSet x = New C\nr = TypeName(x)');
+    expect(engine.eval('r')).toBe('C');
+  });
+});

@@ -285,6 +285,7 @@ export const inspectionFunctions = {
   },
 
   TypeName: (expression: VbValue): VbValue => {
+    if (expression.type === 'Object' && expression.value === null) return { type: 'String', value: 'Nothing' };
     const typeNames: Record<string, string> = {
       Empty: 'Empty',
       Null: 'Null',
