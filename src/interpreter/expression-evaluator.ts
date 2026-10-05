@@ -25,6 +25,7 @@ import {
   createVbValue,
   VbEmpty,
   VbNull,
+  VbNothing,
   toBoolean,
   toNumber,
   toString,
@@ -392,6 +393,7 @@ export class ExpressionEvaluator {
   private jsToVb(value: unknown): VbValue {
     if (value === undefined) return { type: 'Empty', value: undefined };
     if (value === null) return { type: 'Null', value: null };
+    if (value === Symbol.for('Nothing')) return VbNothing;
     if (typeof value === 'boolean') return { type: 'Boolean', value };
     if (typeof value === 'bigint') return { type: 'LongLong', value };
     if (typeof value === 'number') {

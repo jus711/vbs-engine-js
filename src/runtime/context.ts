@@ -1,5 +1,5 @@
 import type { VbValue, VbObjectValueData } from './values.ts';
-import { VbEmpty } from './values.ts';
+import { VbEmpty, VbNothing } from './values.ts';
 import { Vbscope } from './scope.ts';
 import { VbFunctionRegistry } from './function-registry.ts';
 import { VbClassRegistry, VbObjectInstance } from './class-registry.ts';
@@ -8,6 +8,7 @@ import { VbError } from './errors.ts';
 function jsToVb(value: unknown, thisArg?: unknown): VbValue {
   if (value === undefined) return { type: 'Empty', value: undefined };
   if (value === null) return { type: 'Null', value: null };
+  if (value === Symbol.for('Nothing')) return VbNothing;
   if (typeof value === 'boolean') return { type: 'Boolean', value };
   if (typeof value === 'number') {
     if (Number.isInteger(value) && value >= -2147483648 && value <= 2147483647) {

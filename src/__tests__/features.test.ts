@@ -1099,6 +1099,49 @@ describe('Error surfaces (ScriptControl member vs thrown host Error)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// A host member that answers Nothing
+// ---------------------------------------------------------------------------
+// A host has no other way to say "no object": null already means Null. The expected
+// answers were read off vbscript.dll through a COM property that holds Nothing
+// (Scripting.Dictionary.Item after d.Add "k", Nothing).
+describe('A host member that answers Nothing', () => {
+  const NOTHING = Symbol.for('Nothing');
+
+  function engineWith(host: object): VbsEngine {
+    const engine = new VbsEngine();
+    engine.addObject('host', host, true);
+    return engine;
+  }
+
+  it.each<[string, string, unknown]>([
+    ['TypeName', 'r = TypeName(host.Image)', 'Nothing'],
+    ['IsObject', 'r = IsObject(host.Image)', true],
+    ['Is Nothing', 'r = host.Image Is Nothing', true],
+    ['VarType', 'r = VarType(host.Image)', 9],
+    ['If ... Is Nothing', 'If host.Image Is Nothing Then\n r = "taken"\nElse\n r = "not taken"\nEnd If', 'taken'],
+    ['Set', 'Set x = host.Image\nr = x Is Nothing', true],
+  ])('reads a property as Nothing: %s', (_label, code, expected) => {
+    const engine = engineWith({ get Image() { return NOTHING; } });
+    engine.executeStatement(code);
+    expect(engine.error).toBeNull();
+    expect(engine.eval('r')).toBe(expected);
+  });
+
+  it('reads a method result as Nothing', () => {
+    const engine = engineWith({ Find: () => NOTHING });
+    engine.executeStatement('Set x = host.Find("k")\nr = x Is Nothing');
+    expect(engine.error).toBeNull();
+    expect(engine.eval('r')).toBe(true);
+  });
+
+  it('GUARD keeps null meaning Null', () => {
+    const engine = engineWith({ get Image() { return null; } });
+    engine.executeStatement('r = TypeName(host.Image)');
+    expect(engine.eval('r')).toBe('Null');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // TypeName of Nothing
 // ---------------------------------------------------------------------------
 // vbscript.dll names an object reference that holds nothing "Nothing", not "Object";
