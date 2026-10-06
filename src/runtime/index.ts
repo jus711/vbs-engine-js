@@ -1,4 +1,5 @@
 export * from './values.ts';
+export * from './vb-date.ts';
 export * from './scope.ts';
 export * from './function-registry.ts';
 export * from './class-registry.ts';

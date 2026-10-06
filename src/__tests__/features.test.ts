@@ -1097,3 +1097,89 @@ describe('Error surfaces (ScriptControl member vs thrown host Error)', () => {
     expect(engine.error!.source).toBe('Microsoft VBScript runtime error');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Dates as VBScript writes, reads and compares them
+// ---------------------------------------------------------------------------
+// Expected answers read off vbscript.dll (cscript //E:vbscript) under SetLocale 1031 and 1033. A date is an
+// OLE Automation date: CStr writes the locale's short date and long time, leaving out the date on day 0
+// (30 December 1899) and the time at midnight. A comparison with a string literal compares that text, so a
+// host's empty date (day 0) equals "00:00:00"; a comparison with a number compares the OLE day count.
+describe('Dates as VBScript writes, reads and compares them', () => {
+  const hostDates = {
+    Blank: new Date(1899, 11, 30),
+    Stamp: new Date(2026, 8, 29, 10, 30, 0),
+    Day: new Date(2026, 8, 29),
+    Afternoon: new Date(2026, 8, 29, 14, 5, 9),
+  };
+
+  function answer(locale: number, expression: string): unknown {
+    const engine = new VbsEngine();
+    engine.addObject('host', hostDates, true);
+    try {
+      engine.executeStatement(`SetLocale ${locale}\nr = (${expression})`);
+      expect(engine.error).toBeNull();
+      return engine.eval('r');
+    } finally {
+      engine.executeStatement('SetLocale 1033');
+    }
+  }
+
+  it.each<[string, unknown]>([
+    ['host.Blank = "00:00:00"', true],
+    ['host.Blank = 0', true],
+    ['host.Blank = "30.12.1899"', false],
+    ['CStr(host.Blank)', '00:00:00'],
+    ['host.Blank & ""', '00:00:00'],
+    ['CStr(host.Blank) <> "00:00:00"', false],
+    ['host.Stamp = "29.09.2026 10:30:00"', true],
+    ['host.Stamp > "1.1.2027"', true],
+    ['CStr(host.Stamp)', '29.09.2026 10:30:00'],
+    ['CStr(host.Day)', '29.09.2026'],
+    ['host.Day = 46294', true],
+    ['CDbl(host.Stamp)', 46294.4375],
+    ['CStr(CDate("29.09.2026 10:30:00"))', '29.09.2026 10:30:00'],
+    ['CStr(CDate("00:00:00"))', '00:00:00'],
+    ['CDate("00:00:00") = host.Blank', true],
+    ['CStr(CDate("29.09.2026"))', '29.09.2026'],
+    ['CDbl(CDate("10:30:00"))', 0.4375],
+    ['CStr(CDate("2026-09-29 10:30"))', '29.09.2026 10:30:00'],
+    ['CStr(CDate("29.9.26"))', '29.09.2026'],
+    ['CStr(CDate("9/29/2026"))', '29.09.2026'],
+    ['CStr(CDate(1.5))', '31.12.1899 12:00:00'],
+    ['IsDate("29.09.2026")', true],
+    ['IsDate("00:00:00")', true],
+    ['IsDate("abc")', false],
+    ['CStr(TimeSerial(10, 30, 0))', '10:30:00'],
+    ['CDbl(TimeSerial(10, 30, 0))', 0.4375],
+    ['CStr(TimeValue("29.09.2026 10:30:00"))', '10:30:00'],
+    ['CStr(DateValue("29.09.2026 10:30:00"))', '29.09.2026'],
+    ['CStr(DateValue("29.9.2026"))', '29.09.2026'],
+    ['InStr(CStr(Time), ".") > 0', false],
+  ])('German (1031): %s', (expression, expected) => {
+    expect(answer(1031, expression)).toBe(expected);
+  });
+
+  it.each<[string, unknown]>([
+    ['CStr(host.Blank)', '12:00:00 AM'],
+    ['host.Blank = "12:00:00 AM"', true],
+    ['host.Blank = "00:00:00"', false],
+    ['CStr(host.Stamp)', '9/29/2026 10:30:00 AM'],
+    ['CStr(host.Afternoon)', '9/29/2026 2:05:09 PM'],
+    ['CStr(host.Day)', '9/29/2026'],
+    ['CStr(CDate("10:30:00"))', '10:30:00 AM'],
+    ['CStr(CDate("2026-09-29 10:30"))', '9/29/2026 10:30:00 AM'],
+    ['CStr(CDate(1.5))', '12/31/1899 12:00:00 PM'],
+    ['IsDate("9/29/2026")', true],
+    ['IsDate("29.09.2026")', false],
+    ['IsDate("2026-09-29")', true],
+  ])('US English (1033): %s', (expression, expected) => {
+    expect(answer(1033, expression)).toBe(expected);
+  });
+
+  it('raises a type mismatch for a string that is no date', () => {
+    const engine = new VbsEngine();
+    engine.executeStatement('x = CDate("abc")');
+    expect(engine.error?.number).toBe(13);
+  });
+});

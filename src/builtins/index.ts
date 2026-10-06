@@ -1,5 +1,5 @@
 import type { VbContext, VbValue } from '../runtime/index.ts';
-import { createVbError, VbErrorCodes } from '../runtime/index.ts';
+import { createVbError, VbErrorCodes, parseVbDate } from '../runtime/index.ts';
 import { stringFunctions } from './string.ts';
 import { mathFunctions, constants } from './math.ts';
 import { dateFunctions } from './date.ts';
@@ -8,7 +8,7 @@ import { arrayFunctions } from './array.ts';
 import { registerMsgBox } from './msgbox.ts';
 import { registerInputBox } from './inputbox.ts';
 import { registerRegExp } from './regexp.ts';
-import { localeFunctions } from './locale.ts';
+import { getCurrentBCP47Locale, localeFunctions } from './locale.ts';
 import { createCollection } from './collection.ts';
 
 // VbObjectValueData protocol names the VBS engine checks via typeof === 'function'.
@@ -265,8 +265,7 @@ export function registerBuiltins(context: VbContext): void {
       return { type: 'Boolean', value: true };
     }
     if (expression.type === 'String') {
-      const d = new Date(expression.value as string);
-      return { type: 'Boolean', value: !isNaN(d.getTime()) };
+      return { type: 'Boolean', value: parseVbDate(expression.value, getCurrentBCP47Locale()) !== null };
     }
     return { type: 'Boolean', value: false };
   });

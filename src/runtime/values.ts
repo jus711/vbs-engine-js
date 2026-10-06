@@ -1,4 +1,6 @@
 import { createVbError, VbErrorCodes } from './errors.ts';
+import { dateToSerial, formatVbDate, parseVbDate, serialToDate } from './vb-date.ts';
+import { getCurrentBCP47Locale } from '../builtins/locale.ts';
 
 /**
  * Represents all possible VBScript value types.
@@ -290,7 +292,7 @@ export function toNumber(value: VbValue): number {
     return num;
   }
   if (value.type === 'Date') {
-    return value.value.getTime();
+    return dateToSerial(value.value);
   }
   throw createVbError(VbErrorCodes.TypeMismatch, `Type mismatch: ${value.type} cannot be converted to Number`);
 }
@@ -317,7 +319,7 @@ export function toString(value: VbValue): string {
     return String(value.value);
   }
   if (value.type === 'Date') {
-    return value.value.toLocaleString();
+    return formatVbDate(value.value, getCurrentBCP47Locale());
   }
   if (value.type === 'Object') {
     return value.value === null ? 'Nothing' : '[object]';
@@ -340,16 +342,14 @@ export function toVbDate(value: VbValue): Date {
   if (value.type === 'Date') return value.value;
   if (value.type === 'String') {
     const str = value.value;
-    const date = new Date(str);
+    const date = parseVbDate(str, getCurrentBCP47Locale()) ?? new Date(str);
     if (isNaN(date.getTime())) {
       throw createVbError(VbErrorCodes.TypeMismatch, `Type mismatch: "${str}" cannot be converted to Date`);
     }
     return date;
   }
-  if (value.type === 'Double' || value.type === 'Single') {
-    const serial = value.value;
-    const baseDate = new Date(1899, 11, 30);
-    return new Date(baseDate.getTime() + serial * 86400000);
+  if (isNumeric(value)) {
+    return serialToDate(toNumber(value));
   }
   throw createVbError(VbErrorCodes.TypeMismatch, `Type mismatch: ${value.type} cannot be converted to Date`);
 }

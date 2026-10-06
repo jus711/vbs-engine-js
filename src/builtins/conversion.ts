@@ -1,5 +1,5 @@
 import type { VbValue } from '../runtime/index.ts';
-import { toNumber, toString, toBoolean, isEmpty, isNull, isNumeric } from '../runtime/index.ts';
+import { toNumber, toString, toBoolean, toVbDate, isEmpty, isNull, isNumeric, parseVbDate } from '../runtime/index.ts';
 import { getCurrentCurrency, getCurrentBCP47Locale } from './locale.ts';
 
 export const conversionFunctions = {
@@ -20,15 +20,7 @@ export const conversionFunctions = {
   },
 
   CDate: (expression: VbValue): VbValue => {
-    if (expression.type === 'Date') {
-      return expression;
-    }
-    const str = toString(expression);
-    const d = new Date(str);
-    if (isNaN(d.getTime())) {
-      throw new Error('Type mismatch: CDate');
-    }
-    return { type: 'Date', value: d };
+    return { type: 'Date', value: toVbDate(expression) };
   },
 
   CDbl: (expression: VbValue): VbValue => {
@@ -240,8 +232,7 @@ export const inspectionFunctions = {
       return { type: 'Boolean', value: true };
     }
     if (expression.type === 'String') {
-      const d = new Date(expression.value as string);
-      return { type: 'Boolean', value: !isNaN(d.getTime()) };
+      return { type: 'Boolean', value: parseVbDate(expression.value, getCurrentBCP47Locale()) !== null };
     }
     return { type: 'Boolean', value: false };
   },

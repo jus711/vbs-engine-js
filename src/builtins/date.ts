@@ -1,10 +1,5 @@
 import type { VbValue } from '../runtime/index.ts';
-import { toNumber, toString } from '../runtime/index.ts';
-
-function serialToDate(serial: number): Date {
-  const baseDate = new Date(1899, 11, 30);
-  return new Date(baseDate.getTime() + serial * 86400000);
-}
+import { serialToDate, toNumber, toString, toVbDate } from '../runtime/index.ts';
 
 export const dateFunctions = {
   Now: (): VbValue => {
@@ -20,7 +15,7 @@ export const dateFunctions = {
     const now = new Date();
     return {
       type: 'Date',
-      value: new Date(0, 0, 0, now.getHours(), now.getMinutes(), now.getSeconds()),
+      value: new Date(1899, 11, 30, now.getHours(), now.getMinutes(), now.getSeconds()),
     };
   },
 
@@ -218,23 +213,17 @@ export const dateFunctions = {
     const h = Math.floor(toNumber(hour));
     const m = Math.floor(toNumber(minute));
     const s = Math.floor(toNumber(second));
-    return { type: 'Date', value: new Date(0, 0, 0, h, m, s) };
+    return { type: 'Date', value: new Date(1899, 11, 30, h, m, s) };
   },
 
   DateValue: (date: VbValue): VbValue => {
-    const d = new Date(toString(date));
-    if (isNaN(d.getTime())) {
-      throw new Error('Type mismatch: DateValue');
-    }
+    const d = toVbDate(date);
     return { type: 'Date', value: new Date(d.getFullYear(), d.getMonth(), d.getDate()) };
   },
 
   TimeValue: (time: VbValue): VbValue => {
-    const d = new Date(toString(time));
-    if (isNaN(d.getTime())) {
-      throw new Error('Type mismatch: TimeValue');
-    }
-    return { type: 'Date', value: new Date(0, 0, 0, d.getHours(), d.getMinutes(), d.getSeconds()) };
+    const d = toVbDate(time);
+    return { type: 'Date', value: new Date(1899, 11, 30, d.getHours(), d.getMinutes(), d.getSeconds()) };
   },
 
   MonthName: (month: VbValue, abbreviate?: VbValue): VbValue => {
